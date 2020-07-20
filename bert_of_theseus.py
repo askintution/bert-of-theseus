@@ -103,8 +103,10 @@ def bert_of_theseus(predecessor, successor, classfier):
     predecessor_outputs = predecessor.apply_embeddings(inputs)
     successor_outputs = successor.apply_embeddings(inputs)
     outputs = BinaryRandomChoice()([predecessor_outputs, successor_outputs])
-    # Transformer层替换
+    # Transformer层替换,这里predecessor有12层，successor只有3层，那么successor的1层对应predecessor的4层
     layers_per_module = predecessor.num_hidden_layers // successor.num_hidden_layers
+
+    # 随机挑选predecessor或者successor的block组合成一个完整的transformer模型，进行训练
     for index in range(successor.num_hidden_layers):
         predecessor_outputs = outputs
         for sub_index in range(layers_per_module):
@@ -194,7 +196,7 @@ theseus_model.summary()
 
 if __name__ == '__main__':
 
-    # 训练predecessor
+    # 训练predecessor，训练好12层的bert结构
     predecessor_evaluator = Evaluator('best_predecessor.weights')
     predecessor_model.fit_generator(
         train_generator.forfit(),
@@ -203,7 +205,7 @@ if __name__ == '__main__':
         callbacks=[predecessor_evaluator]
     )
 
-    # 训练theseus
+    # 训练theseus,主要是训练successor的网络
     theseus_evaluator = Evaluator('best_theseus.weights')
     theseus_model.fit_generator(
         train_generator.forfit(),
@@ -213,7 +215,7 @@ if __name__ == '__main__':
     )
     theseus_model.load_weights('best_theseus.weights')
 
-    # 训练successor
+    # 训练successor，微调
     successor_evaluator = Evaluator('best_successor.weights')
     successor_model.fit_generator(
         train_generator.forfit(),
